@@ -1,178 +1,428 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Search, X, MessageCircle, SlidersHorizontal, ArrowRight } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Search, X, MessageCircle, ChevronDown, ArrowUpRight } from 'lucide-react';
 import Layout from '../components/Layout/Layout';
-import useFirestore from '../hooks/useFirestore';
+import { useData } from '../context/DataContext';
 
+/* ─────────────────────────────────────────────
+   ProductsPage
+   Editorial hero → calm product grid → side panel
+───────────────────────────────────────────── */
 const ProductsPage = () => {
-  const { data: perfumes, loading, error } = useFirestore('perfumes');
-  const [selectedPerfume, setSelectedPerfume] = useState(null);
-  const [searchQuery, setSearchQuery] = useState('');
+  const { perfumes, loading, error } = useData();
+  const [selectedPerfume, setSelectedPerfume]   = useState(null);
+  const [searchQuery, setSearchQuery]           = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [filteredPerfumes, setFilteredPerfumes] = useState([]);
   const sidePanelRef = useRef(null);
+  const gridRef      = useRef(null);
 
-  const categories = ['All', ...new Set(perfumes.map(perfume => perfume?.category).filter(Boolean))];
+  const categories = ['All', ...new Set((perfumes || []).map(p => p?.category).filter(Boolean))];
 
   useEffect(() => {
-    const filtered = perfumes.filter(perfume => {
-      const matchesSearch = perfume?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                            perfume?.description?.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesCategory = selectedCategory === 'All' || perfume?.category === selectedCategory;
-      return matchesSearch && matchesCategory;
+    const filtered = perfumes.filter(p => {
+      const matchSearch   = p?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                            p?.description?.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchCategory = selectedCategory === 'All' || p?.category === selectedCategory;
+      return matchSearch && matchCategory;
     });
     setFilteredPerfumes(filtered);
   }, [searchQuery, selectedCategory, perfumes]);
 
-  const handleProductClick = (perfume) => setSelectedPerfume(perfume);
-  const closeSidePanel = () => setSelectedPerfume(null);
-
+  // Close side panel on outside click
   useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (sidePanelRef.current && !sidePanelRef.current.contains(event.target)) {
-        closeSidePanel();
+    const handler = (e) => {
+      if (sidePanelRef.current && !sidePanelRef.current.contains(e.target)) {
+        setSelectedPerfume(null);
       }
     };
-    if (selectedPerfume) document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    if (selectedPerfume) document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
   }, [selectedPerfume]);
 
-  const createWhatsAppLink = (perfumeName) => {
-    const message = `Hi, I'm interested in purchasing ${perfumeName}. Can you provide more information?`;
-    return `https://wa.me/?text=${encodeURIComponent(message)}`;
+  // Lock body scroll when panel is open
+  useEffect(() => {
+    document.body.style.overflow = selectedPerfume ? 'hidden' : '';
+    return () => { document.body.style.overflow = ''; };
+  }, [selectedPerfume]);
+
+  const createWhatsAppLink = (name) => {
+    const msg = `Hi, I'm interested in purchasing ${name}. Can you provide more information?`;
+    return `https://wa.me/?text=${encodeURIComponent(msg)}`;
   };
 
-  if (loading) return <Layout><div className="mt-40 flex flex-col items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#FFCA28]"></div></div></Layout>;
-  if (error) return <Layout><div className="mt-40 text-center text-red-500 font-bold uppercase tracking-widest">Console Error: {error}</div></Layout>;
+  const scrollToGrid = () => {
+    gridRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  /* ── Loading ── */
+  if (loading) {
+    return (
+      <Layout>
+        <div className="min-h-screen bg-[#060F1A] flex flex-col items-center justify-center gap-6">
+          <div
+            className="w-12 h-12 rounded-full border border-[#C9A84C]/30"
+            style={{ animation: 'spin 2s linear infinite', borderTopColor: '#C9A84C' }}
+          />
+          <span className="font-body text-[10px] font-medium uppercase tracking-[0.4em] text-[#B8B0A4]">
+            Loading Collection
+          </span>
+          <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+        </div>
+      </Layout>
+    );
+  }
+
+  /* ── Error ── */
+  if (error) {
+    return (
+      <Layout>
+        <div className="min-h-screen bg-[#060F1A] flex items-center justify-center">
+          <p className="font-body text-sm text-red-400/70 uppercase tracking-widest">{error}</p>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>
-      <div className='mt-24 min-h-screen bg-white'>
-        <div className="container mx-auto p-6">
 
-          {/* Header Section */}
-          <div className="mb-12 border-b-4 border-[#051e34] pb-6">
-            <h1 className="text-4xl font-black text-[#051e34] uppercase tracking-tighter">Full Collection</h1>
-            <p className="text-[#039BE5] font-bold text-xs uppercase tracking-[0.3em] mt-2">Filter by attributes or search name</p>
+      {/* ══════════════════════════════════════════
+          1. EDITORIAL HERO
+      ══════════════════════════════════════════ */}
+      <section className="relative min-h-screen bg-[#060F1A] flex flex-col overflow-hidden">
+
+        {/* Background image */}
+        <div className="absolute inset-0">
+          <img
+            src="https://images.unsplash.com/photo-1588776814546-1ffbb6bd7e37?auto=format&fit=crop&q=80&w=2000"
+            alt=""
+            className="w-full h-full object-cover opacity-20"
+            style={{ filter: 'saturate(0.4)' }}
+          />
+          <div className="absolute inset-0 bg-linear-to-b from-[#060F1A]/60 via-transparent to-[#060F1A]" />
+        </div>
+
+        {/* Vertical eyebrow — left edge */}
+        <div
+          className="hidden lg:flex absolute left-8 bottom-24 flex-col items-center gap-3 z-10"
+          style={{ writingMode: 'vertical-rl' }}
+        >
+          <div className="h-16 w-px bg-[#C9A84C]/20" />
+          <span className="text-[9px] font-body font-medium uppercase tracking-[0.4em] text-[#B8B0A4]/40">
+            {filteredPerfumes.length} Scents
+          </span>
+        </div>
+
+        {/* Hero content */}
+        <div className="relative z-10 flex-1 flex flex-col justify-end px-6 md:px-16 lg:px-24 pb-24 pt-40">
+          <div className="flex items-center gap-4 mb-6" style={{ animation: 'fadeUp 0.9s cubic-bezier(0.22,1,0.36,1) both' }}>
+            <div className="h-px w-8 bg-[#C9A84C]" />
+            <span className="text-[10px] font-body font-medium uppercase tracking-[0.45em] text-[#C9A84C]">
+              Full Collection
+            </span>
           </div>
 
-          {/* Controls Section */}
-          <div className="flex flex-col md:flex-row gap-6 mb-12">
-            <div className="relative flex-1 group">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 group-focus-within:text-[#039BE5] transition-colors" />
-              <input
-                type="text"
-                placeholder="Search the scent database..."
-                className="pl-12 pr-4 py-4 w-full rounded-none border-b-2 border-gray-200 focus:border-[#FFCA28] focus:outline-none bg-gray-50/50 text-[#051e34] font-medium"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
+          <h1
+            className="font-display font-light leading-none mb-10"
+            style={{
+              fontFamily: "'Cormorant Garamond', serif",
+              fontSize: 'clamp(3.5rem, 10vw, 9rem)',
+              color: '#F5F0E8',
+              animation: 'fadeUp 0.9s cubic-bezier(0.22,1,0.36,1) 0.1s both',
+              letterSpacing: '-0.01em',
+            }}
+          >
+            Every<br />
+            <em style={{ fontStyle: 'italic', color: '#C9A84C' }}>Scent.</em>
+          </h1>
 
-            <div className="md:w-72 relative">
-              <SlidersHorizontal className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
-              <select
-                className="w-full pl-10 pr-4 py-4 appearance-none rounded-none border-b-2 border-gray-200 focus:border-[#FFCA28] focus:outline-none bg-gray-50/50 text-[#051e34] font-bold text-xs uppercase tracking-widest"
-                value={selectedCategory}
-                onChange={(e) => setSelectedCategory(e.target.value)}
-              >
-                {categories.map(category => (
-                  <option key={category} value={category}>{category}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          {/* Product Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-            {filteredPerfumes.length > 0 ? (
-              filteredPerfumes.map(perfume => (
-                <div
-                  key={perfume.id}
-                  className="group relative bg-white overflow-hidden border border-gray-100 hover:border-transparent transition-all duration-500 hover:shadow-[0_20px_50px_rgba(5,30,52,0.1)]"
-                  onClick={() => handleProductClick(perfume)}
-                >
-                  <div className="aspect-3/4 overflow-hidden bg-gray-100">
-                    <img
-                      src={perfume.image}
-                      alt={perfume.name}
-                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-                    />
-                    <div className="absolute top-4 left-4">
-                        <span className="bg-[#051e34] text-white text-[10px] font-black px-3 py-1 uppercase tracking-widest">
-                            {perfume.category}
-                        </span>
-                    </div>
-                  </div>
-                  <div className="p-5">
-                    <h2 className="text-lg font-black text-[#051e34] uppercase tracking-tight mb-1 group-hover:text-[#039BE5] transition-colors">{perfume.name}</h2>
-                    <div className="flex justify-between items-center mt-4">
-                      <span className="text-[#FFA000] font-black tracking-tighter text-xl">{perfume.price}</span>
-                      <button className="text-[#051e34] flex items-center gap-1 text-[10px] font-black uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity">
-                        Details <ArrowRight size={12} />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))
-            ) : (
-              <div className="col-span-full text-center py-20 border-2 border-dashed border-gray-200">
-                <p className="text-gray-400 font-bold uppercase tracking-[0.2em]">No results found in Registry</p>
-              </div>
-            )}
+          <div
+            className="flex flex-col sm:flex-row items-start sm:items-center gap-6"
+            style={{ animation: 'fadeUp 0.9s cubic-bezier(0.22,1,0.36,1) 0.25s both' }}
+          >
+            <p className="font-body font-light text-[#B8B0A4] text-sm max-w-xs leading-relaxed">
+              Browse our complete catalogue of artisanal fragrances, each a world unto itself.
+            </p>
+            <button
+              onClick={scrollToGrid}
+              className="group flex items-center gap-3 text-[10px] font-body font-medium uppercase tracking-[0.3em] text-[#F5F0E8] border border-white/10 hover:border-[#C9A84C]/50 px-6 py-3.5 transition-all duration-500"
+            >
+              Browse Collection
+              <ChevronDown size={14} className="text-[#C9A84C] animate-bounce" />
+            </button>
           </div>
         </div>
 
-        {/* Side Panel (Glassmorphism) */}
-        {selectedPerfume && (
-          <div className="fixed inset-0 bg-[#051e34]/60 backdrop-blur-sm z-60 flex justify-end">
-            <div
-              ref={sidePanelRef}
-              className="bg-white w-full max-w-lg h-full overflow-y-auto shadow-2xl animate-slide-in"
+        <style>{`@keyframes fadeUp { from { opacity:0; transform:translateY(40px); } to { opacity:1; transform:translateY(0); } }`}</style>
+      </section>
+
+      {/* ══════════════════════════════════════════
+          2. FILTER BAR (transition zone)
+      ══════════════════════════════════════════ */}
+      <div className="sticky top-0 z-30 bg-[#F5F0E8]/95 backdrop-blur-md border-b border-[#0A1628]/8 shadow-sm">
+        <div className="container mx-auto px-6 md:px-16 lg:px-24 py-4 flex flex-col sm:flex-row gap-4 items-stretch sm:items-center">
+
+          {/* Search */}
+          <div className="relative flex-1 group">
+            <Search className="absolute left-0 top-1/2 -translate-y-1/2 h-4 w-4 text-[#B8B0A4] group-focus-within:text-[#C9A84C] transition-colors" />
+            <input
+              type="text"
+              placeholder="Search fragrances…"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              className="w-full pl-7 pr-4 py-2.5 bg-transparent border-b border-[#0A1628]/15 focus:border-[#C9A84C] outline-none font-body text-sm text-[#0A1628] placeholder-[#B8B0A4] transition-colors duration-300"
+            />
+          </div>
+
+          {/* Divider */}
+          <div className="hidden sm:block h-6 w-px bg-[#0A1628]/10" />
+
+          {/* Category pills */}
+          <div className="flex items-center gap-2 overflow-x-auto scrollbar-none pb-1 sm:pb-0">
+            {categories.map(cat => (
+              <button
+                key={cat}
+                onClick={() => setSelectedCategory(cat)}
+                className={`shrink-0 text-[9px] font-body font-medium uppercase tracking-[0.3em] px-4 py-2 transition-all duration-300 ${
+                  selectedCategory === cat
+                    ? 'bg-[#0A1628] text-[#F5F0E8]'
+                    : 'bg-transparent text-[#B8B0A4] hover:text-[#0A1628] border border-[#0A1628]/10 hover:border-[#0A1628]/30'
+                }`}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
+
+          {/* Result count */}
+          <div className="hidden lg:block shrink-0">
+            <span className="font-body text-[10px] font-medium uppercase tracking-[0.3em] text-[#B8B0A4]">
+              {filteredPerfumes.length} results
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* ══════════════════════════════════════════
+          3. PRODUCT GRID
+      ══════════════════════════════════════════ */}
+      <div
+        ref={gridRef}
+        className="bg-[#F5F0E8] min-h-screen"
+      >
+        <div className="container mx-auto px-6 md:px-16 lg:px-24 py-16">
+          {filteredPerfumes.length === 0 ? (
+            <div className="py-32 text-center">
+              <p className="font-display font-light text-4xl text-[#0A1628]/20 italic" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
+                No fragrances found.
+              </p>
+              <button
+                onClick={() => { setSearchQuery(''); setSelectedCategory('All'); }}
+                className="mt-6 text-[10px] font-body uppercase tracking-[0.3em] text-[#C9A84C] border-b border-[#C9A84C] pb-1"
+              >
+                Clear filters
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-6 gap-y-12">
+              {filteredPerfumes.map((perfume, index) => (
+                <ProductCard
+                  key={perfume.id}
+                  perfume={perfume}
+                  index={index}
+                  onClick={() => setSelectedPerfume(perfume)}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ══════════════════════════════════════════
+          4. SIDE PANEL
+      ══════════════════════════════════════════ */}
+      {selectedPerfume && (
+        <div className="fixed inset-0 z-50 flex justify-end">
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-[#060F1A]/70 backdrop-blur-sm"
+            style={{ animation: 'fadeIn 0.4s ease both' }}
+          />
+
+          {/* Panel */}
+          <div
+            ref={sidePanelRef}
+            className="relative bg-[#F5F0E8] w-full max-w-md h-full overflow-y-auto shadow-2xl flex flex-col"
+            style={{ animation: 'slideInRight 0.5s cubic-bezier(0.22,1,0.36,1) both' }}
+          >
+            {/* Close */}
+            <button
+              onClick={() => setSelectedPerfume(null)}
+              className="absolute top-6 right-6 z-20 w-9 h-9 flex items-center justify-center border border-[#0A1628]/15 hover:border-[#0A1628]/40 transition-colors duration-300"
             >
-              <div className="sticky top-0 bg-white/90 backdrop-blur-md p-6 border-b border-gray-100 flex justify-between items-center z-10">
-                <h2 className="text-xs font-black text-[#051e34] uppercase tracking-[0.4em]">Product Analysis</h2>
-                <button onClick={closeSidePanel} className="p-2 hover:bg-gray-100 rounded-full transition-colors"><X size={20} /></button>
+              <X size={16} className="text-[#0A1628]" />
+            </button>
+
+            {/* Image */}
+            <div className="relative h-[55vh] overflow-hidden bg-[#0A1628] shrink-0">
+              <img
+                src={selectedPerfume.image}
+                alt={selectedPerfume.name}
+                className="w-full h-full object-cover opacity-80"
+                style={{ filter: 'saturate(0.7)' }}
+              />
+              <div className="absolute inset-0 bg-linear-to-t from-[#0A1628]/60 via-transparent to-transparent" />
+
+              {/* Category badge */}
+              <div className="absolute top-6 left-6">
+                <span className="text-[9px] font-body font-medium uppercase tracking-[0.35em] text-[#C9A84C] border border-[#C9A84C]/50 px-3 py-1.5">
+                  {selectedPerfume.category}
+                </span>
+              </div>
+            </div>
+
+            {/* Details */}
+            <div className="flex-1 p-8 flex flex-col gap-6">
+              <div>
+                <h2
+                  className="font-display font-light leading-none mb-3"
+                  style={{
+                    fontFamily: "'Cormorant Garamond', serif",
+                    fontSize: 'clamp(2rem, 5vw, 3rem)',
+                    color: '#0A1628',
+                  }}
+                >
+                  {selectedPerfume.name}
+                </h2>
+                <p
+                  className="font-display font-light text-3xl text-[#C9A84C]"
+                  style={{ fontFamily: "'Cormorant Garamond', serif" }}
+                >
+                  {selectedPerfume.price}
+                </p>
               </div>
 
-              <div className="p-8">
-                <div className="relative mb-8 group">
-                  <div className="absolute -inset-1 bg-[#FFCA28] opacity-20 blur-xl group-hover:opacity-40 transition-opacity"></div>
-                  <img src={selectedPerfume.image} alt={selectedPerfume.name} className="relative w-full aspect-square object-cover rounded-none shadow-2xl border-b-8 border-[#FFCA28]" />
+              <div className="h-px bg-[#0A1628]/8" />
+
+              <div>
+                <h3 className="text-[10px] font-body font-medium uppercase tracking-[0.35em] text-[#B8B0A4] mb-3">
+                  Description
+                </h3>
+                <p className="font-body font-light text-[#0A1628] leading-relaxed text-sm">
+                  {selectedPerfume.description}
+                </p>
+              </div>
+
+              {selectedPerfume.details && (
+                <div className="bg-white border-l-2 border-[#C9A84C] p-5">
+                  <h3 className="text-[10px] font-body font-medium uppercase tracking-[0.35em] text-[#B8B0A4] mb-2">
+                    Fragrance Notes
+                  </h3>
+                  <p className="font-body font-light text-sm text-[#0A1628]/70 italic leading-relaxed">
+                    {selectedPerfume.details}
+                  </p>
                 </div>
+              )}
 
-                <div className="mb-8">
-                  <span className="text-[#039BE5] font-black text-[10px] uppercase tracking-widest">{selectedPerfume.category}</span>
-                  <h3 className="text-4xl font-black text-[#051e34] uppercase tracking-tighter mt-2">{selectedPerfume.name}</h3>
-                  <p className="text-[#FFA000] text-3xl font-black tracking-tighter mt-2">{selectedPerfume.price}</p>
-                </div>
-
-                <div className="space-y-6">
-                   <div>
-                      <h4 className="text-[10px] font-black uppercase text-gray-400 tracking-widest mb-2">Description</h4>
-                      <p className="text-gray-600 leading-relaxed font-medium">{selectedPerfume.description}</p>
-                   </div>
-
-                   <div className="bg-gray-50 p-6 border-l-4 border-[#039BE5]">
-                      <h4 className="text-[10px] font-black uppercase text-[#051e34] tracking-widest mb-2">Scent Registry Details</h4>
-                      <p className="text-sm text-gray-500 italic">{selectedPerfume.details || "Artisanal blend of rare essential oils and molecular notes."}</p>
-                   </div>
-
-                    <a
-                      href={createWhatsAppLink(selectedPerfume.name)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="w-full bg-[#051e34] text-white text-center py-5 rounded-none font-black text-xs uppercase tracking-[0.2em] hover:bg-[#039BE5] transition-all flex items-center justify-center gap-3 shadow-xl"
-                    >
-                      <MessageCircle size={18} />
-                      Enquire via WhatsApp
-                    </a>
-                </div>
+              <div className="mt-auto pt-4">
+                <a
+                  href={createWhatsAppLink(selectedPerfume.name)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="group w-full flex items-center justify-center gap-3 bg-[#0A1628] hover:bg-[#C9A84C] text-[#F5F0E8] py-5 transition-colors duration-500"
+                >
+                  <MessageCircle size={16} className="shrink-0" />
+                  <span className="text-[10px] font-body font-medium uppercase tracking-[0.3em]">
+                    Enquire via WhatsApp
+                  </span>
+                </a>
               </div>
             </div>
           </div>
-        )}
-      </div>
+
+          <style>{`
+            @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
+            @keyframes slideInRight { from { transform:translateX(100%); opacity:0; } to { transform:translateX(0); opacity:1; } }
+          `}</style>
+        </div>
+      )}
     </Layout>
+  );
+};
+
+/* ─────────────────────────────────────────────
+   Product Card
+───────────────────────────────────────────── */
+const ProductCard = ({ perfume, index, onClick }) => {
+  const ref  = useRef(null);
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    const obs = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) { setVisible(true); obs.disconnect(); } },
+      { threshold: 0.08 }
+    );
+    if (ref.current) obs.observe(ref.current);
+    return () => obs.disconnect();
+  }, []);
+
+  return (
+    <div
+      ref={ref}
+      onClick={onClick}
+      className="group cursor-pointer"
+      style={{
+        opacity:    visible ? 1 : 0,
+        transform:  visible ? 'translateY(0)' : 'translateY(32px)',
+        transition: `opacity 0.8s cubic-bezier(0.22,1,0.36,1) ${index * 60}ms, transform 0.8s cubic-bezier(0.22,1,0.36,1) ${index * 60}ms`,
+      }}
+    >
+      {/* Image */}
+      <div className="relative overflow-hidden bg-white aspect-3/4 mb-5">
+        <img
+          src={perfume.image}
+          alt={perfume.name}
+          className="w-full h-full object-cover transition-all duration-700 group-hover:scale-105 saturate-[0.8] group-hover:saturate-100"
+        />
+        {/* Hover overlay */}
+        <div className="absolute inset-0 bg-[#060F1A]/40 opacity-0 group-hover:opacity-100 transition-opacity duration-500 flex items-end p-5">
+          <span className="flex items-center gap-2 text-[9px] font-body font-medium uppercase tracking-[0.35em] text-[#F5F0E8]">
+            View Details <ArrowUpRight size={12} />
+          </span>
+        </div>
+        {/* Category tag */}
+        <div className="absolute top-4 left-4">
+          <span className="text-[8px] font-body font-medium uppercase tracking-[0.3em] text-[#C9A84C] bg-[#060F1A]/80 backdrop-blur-sm px-2.5 py-1">
+            {perfume.category}
+          </span>
+        </div>
+      </div>
+
+      {/* Info */}
+      <div className="px-1">
+        <div className="flex items-start justify-between gap-2">
+          <h3
+            className="font-display font-light leading-snug group-hover:text-[#C9A84C] transition-colors duration-300 flex-1"
+            style={{
+              fontFamily: "'Cormorant Garamond', serif",
+              fontSize: '1.35rem',
+              color: '#0A1628',
+            }}
+          >
+            {perfume.name}
+          </h3>
+          <span
+            className="font-display font-light text-xl text-[#C9A84C] shrink-0 mt-0.5"
+            style={{ fontFamily: "'Cormorant Garamond', serif" }}
+          >
+            {perfume.price}
+          </span>
+        </div>
+
+        {/* Animated underline */}
+        <div className="mt-3 h-px w-0 bg-[#C9A84C] group-hover:w-full transition-all duration-500" />
+      </div>
+    </div>
   );
 };
 

@@ -1,33 +1,32 @@
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 import { Routes, Route } from 'react-router-dom';
-import Homepage from './pages/HomePage';
-import ProductsPage from './pages/ProductsPage';
-import AdminPanel from './pages/AdminPanel';
+
+// Original Imports
 import ProtectedRoute from './ProtectedRoute';
-import AdminLogin from './components/AdminPanel/AdminLogin';
+
+// Lazy load the pages
+const Homepage = lazy(() => import('./pages/HomePage'));
+const ProductsPage = lazy(() => import('./pages/ProductsPage'));
+const AdminPanel = lazy(() => import('./pages/AdminPanel'));
+const AdminLogin = lazy(() => import('./components/AdminPanel/AdminLogin'));
 
 function App() {
   return (
-    <Routes>
-      {/* Public Routes */}
-      <Route path="/" element={<Homepage />} />
-      <Route path="/products" element={<ProductsPage />} />
-
-      {/* Admin Auth Route */}
-      <Route path="/admin/login" element={<AdminLogin />} />
-
-      {/* Protected Admin Route */}
-      <Route
-        path="/admin"
-        element={
-          <ProtectedRoute>
-            <AdminPanel />
-          </ProtectedRoute>
-        }
-      />
-
-      {/* Optional: Catch-all redirect or 404 can go here */}
-    </Routes>
+    <Suspense fallback={null}>
+      <Routes>
+        <Route path="/" element={<Homepage />} />
+        <Route path="/products" element={<ProductsPage />} />
+        <Route path="/admin/login" element={<AdminLogin />} />
+        <Route
+          path="/admin"
+          element={
+            <ProtectedRoute>
+              <AdminPanel />
+            </ProtectedRoute>
+          }
+        />
+      </Routes>
+    </Suspense>
   );
 }
 

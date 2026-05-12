@@ -52,7 +52,7 @@ const AdminLogin = () => {
           <div className="inline-flex items-center justify-center w-16 h-16 bg-[#FFCA28] rounded-2xl mb-4 shadow-xl shadow-[#FFCA28]/20">
             <Lock className="text-[#051e34] w-8 h-8" />
           </div>
-          <h2 className="text-2xl font-black text-white uppercase tracking-[0.2em]">ScentBase <span className="text-[#039BE5]">OS</span></h2>
+          <h2 className="text-2xl font-black text-white uppercase tracking-[0.2em]">FireScent <span className="text-[#039BE5]">BackOffice</span></h2>
           <p className="text-gray-400 text-[10px] font-bold uppercase tracking-[0.4em] mt-2">Administrative Access Only</p>
         </div>
 
