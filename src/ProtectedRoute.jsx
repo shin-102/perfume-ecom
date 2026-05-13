@@ -7,35 +7,17 @@ const ProtectedRoute = ({ children }) => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const checkAuth = async () => {
+    const checkAuth = () => {
       setLoading(true);
       const isAdminLoggedIn = localStorage.getItem('isAdminLoggedIn');
 
-      try {
-        const response = await fetch(
-          'http://127.0.0.1:5001/perfume-ecom-3b6b8/us-central1/checkAdminAuth',
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ isAdminLoggedIn }),
-          }
-        );
-
-        const data = await response.json();
-
-        if (data.authenticated) {
-          setIsAuthenticated(true);
-        } else {
-          setIsAuthenticated(false);
-          navigate('/admin/login');
-        }
-      } catch (error) {
-        console.error('Auth Bridge Error:', error);
+      if (isAdminLoggedIn === 'true') {
+        setIsAuthenticated(true);
+      } else {
         setIsAuthenticated(false);
         navigate('/admin/login');
-      } finally {
-        setLoading(false);
       }
+      setLoading(false);
     };
 
     checkAuth();
