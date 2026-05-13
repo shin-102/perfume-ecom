@@ -14,26 +14,25 @@ const AdminLogin = () => {
     setIsAuthenticating(true);
 
     try {
-      // Simulation of the fetch logic
-      const response = await fetch(
-        'http://127.0.0.1:5001/perfume-ecom-3b6b8/us-central1/adminLogin',
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ password }),
-        }
-      );
+      // Client-side validation against environment variable
+      const correctPassword = import.meta.env.VITE_ADMIN_PASSWORD;
 
-      const data = await response.json();
+      if (!correctPassword) {
+        setError('Server configuration error: Admin password not set');
+        setIsAuthenticating(false);
+        return;
+      }
 
-      if (data.success) {
+      // Simple password comparison
+      if (password === correctPassword) {
         localStorage.setItem('isAdminLoggedIn', 'true');
         navigate('/admin');
       } else {
-        setError(data.message || 'Access Denied: Invalid Credentials');
+        setError('Access Denied: Invalid Credentials');
       }
-    } catch {
-      setError('System Error: Connection to Auth-Server failed.');
+    } catch (err) {
+      setError('System Error: Authentication failed.');
+      console.error('Auth error:', err);
     } finally {
       setIsAuthenticating(false);
     }
@@ -87,7 +86,7 @@ const AdminLogin = () => {
             <button
               type="submit"
               disabled={isAuthenticating}
-              className="w-full bg-[#039BE5] hover:bg-[#FFCA28] hover:text-[#051e34] text-white font-black py-4 uppercase text-xs tracking-[0.3em] transition-all flex items-center justify-center gap-2 group disabled:opacity-50"
+              className="w-full bg-[#039BE5] hover:bg-[#FFCA28] hover:text-[#051e34] text-white font-black py-4 uppercase text-xs tracking-[0.3em] transition-all flex items-center justify-center gap-2 disabled:opacity-50 group"
             >
               {isAuthenticating ? (
                 <span className="animate-pulse">Verifying Identity...</span>
@@ -103,7 +102,7 @@ const AdminLogin = () => {
         {/* Footer info */}
         <div className="mt-8 text-center">
           <p className="text-gray-500 text-[9px] font-bold uppercase tracking-widest">
-            Protected by Firebase Security Rules & AES-256 Encryption
+            Client-side Authentication with Firestore Access
           </p>
           <button onClick={() => navigate('/')} className='text-gray-300 text-sm pt-4 font-bold uppercase tracking-widest hover:cursor-pointer hover:text-[#039BE5] transition-colors'>
             Go to Home
